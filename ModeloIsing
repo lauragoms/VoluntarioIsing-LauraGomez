@@ -1,0 +1,311 @@
+# include <stdio.h>
+# include <math.h>
+# include "gsl_rng.h" //Libreria para generación de números aleatorios
+
+gsl_rng *tau;
+
+int main()
+{
+	//Definimos las variables que durante el desarrollo nos hará falta:
+
+	double randomvar,e,p,ITER, T,chi,mN,eN,cN,Es,ftotal;
+	int i,j,k,tt,w,x,N,n,f,m,pasosMC,DeltaE,temp;
+
+	FILE *fm,*fe,*fc;
+	fm=fopen("magnetizacion.txt","w");
+	fe=fopen("energia128.txt","w");
+	fc=fopen("caloresp128.txt","w");
+
+	N=16;
+	f=N-1;
+	pasosMC=1e6;
+	ITER=pasosMC*N*N;
+
+	//Ficheros de almacenamiento de datos, punteros a fichero:
+	FILE *f1,*f2;
+	f1=fopen("MallaFinal.txt","w");
+	f2=fopen("MallaInicial.txt","w");
+
+	//Preparamos la generación de números aleatorios:
+
+
+    	extern gsl_rng *tau; //Puntero al estado del número aleatorio
+    	int semilla=481846; //Semilla del generador de números aleatorios
+    
+    
+    	tau=gsl_rng_alloc(gsl_rng_taus); //Inicializamos el puntero
+    	gsl_rng_set(tau,semilla); //Inicializamos la semilla
+	
+	//printf("n es %i y m es %i \n ",n,m);
+
+
+
+
+
+	double summN, sumeN, sumeN1, sumeN1cuad,sumeNcuad, prodfila, prod,prodcolumna;
+
+	int fi[(N/2+1)];
+	
+
+	
+	double TT[13];
+	TT[0]=1.5; TT[1]=1.7; TT[2]=1.8; TT[3]=1.9; TT[4]=2.1; TT[5]=2.3; TT[6]=2.5; TT[7]=2.7; TT[8]=2.8; TT[9]=2.9; TT[10]=3.1; TT[11]=3.3; TT[12]=3.5;
+
+  for (temp=0; temp<13; temp++)
+  {
+    	//Definimos la red de nodos:
+	int s[N][N];
+	for (i=0; i<N; i++)
+	{	
+		for (j=0; j<N; j++)
+		{
+		
+			   s[i][j]=1;
+			
+		}
+		
+	}
+            for (w=0; w<((N/2)+1); w++)
+	            { fi[w]=0; }
+	double energiamedia=0;
+	double energiatotal=0;
+	double magnetizaciontotal=0;
+	double magnetizacionmedia=0;
+	double energiatotalcuad=0;
+	double energiamediacuad=0;
+	T=TT[temp];
+
+	//Creamos el bucle aleatorio:
+	for (i=0; i<pasosMC; i++)
+	{
+	//Reinicializamos todos los promedios en cada bucle:
+
+
+	summN=0;
+	sumeN=0;
+	sumeN1=0;
+	sumeN1cuad=0;
+	sumeNcuad=0;
+	prodfila=0;
+	prod=0;
+	prodcolumna=0;
+		
+		for (tt=0; tt<(N*1.0*N); tt++)
+		{
+		//Nos vamos a una casilla al azar;
+		n=gsl_rng_uniform_int(tau,f);
+		m=gsl_rng_uniform_int(tau,f);
+	
+		//Evaluamos la diferencia de energía y la probabilidad de transito entre estas dos energías:
+
+		DeltaE=2*s[n][m]*(s[n+1][m]+s[n-1][m]+s[n][m+1]+s[n][m-1]);
+
+		if (n==0 && m!=0 && m!=f)
+		{ DeltaE=2*s[n][m]*(s[n+1][m]+s[f][m]+s[n][m+1]+s[n][m-1]);
+			
+		}
+		if (m==0 && n!=0 && n!=f)
+		{
+		DeltaE=2*s[n][m]*(s[n+1][m]+s[n-1][m]+s[n][m+1]+s[n][f]);
+		
+		}
+		if (n==0 && m==0)
+		{
+		DeltaE=2*s[n][m]*(s[n+1][m]+s[f][m]+s[n][m+1]+s[n][f]);
+		
+		}
+
+		if (n==f && m==0)
+		{
+		DeltaE=2*s[n][m]*(s[0][m]+s[n-1][m]+s[n][m+1]+s[n][f]);
+		
+		}
+		if (n==0 && m==f)
+		{
+		DeltaE=2*s[n][m]*(s[n+1][m]+s[f][m]+s[n][0]+s[n][m-1]);
+		
+		}
+		if (n==f && m==f)
+		{
+		DeltaE=2*s[n][m]*(s[0][m]+s[n-1][m]+s[n][0]+s[n][m-1]);
+		
+		}
+		if (n==f && m!=0 && m!=f)
+		{
+		DeltaE=2*s[n][m]*(s[0][m]+s[n-1][m]+s[n][m+1]+s[n][m-1]);
+		
+		}
+		if (n!=0 && n!=f && m==f)
+		{
+		DeltaE=2*s[n][m]*(s[n+1][m]+s[n-1][m]+s[n][0]+s[n][m-1]);
+		
+		}
+		
+		
+		//Vemos si la exponencial es menor que 1, si lo es,esa es la probabilidad.
+		e=exp(-DeltaE/T);
+		//printf("DeltaE vale %i y e %lf \n",DeltaE,e);
+		
+		if (e<1)
+		{
+			p=e;
+		}
+		else {p=1;}
+		
+		
+		//Generamos un num aleatorio uniforme de forma que si chi<p se da el cambio de estado del spin n,m:
+		chi=gsl_rng_uniform(tau);
+		//
+
+		if  (chi<p)
+		{
+			s[n][m]=-s[n][m];
+		}
+  }//fin del N*N
+		
+	 if ((fmod(i,100))==0)
+		{
+		
+			/*for (w=0; w<N; w++)
+			{	printf("HOLA %i\n",fi[w]); }*/
+			//Calculamos la magnetización promedio:
+			
+			for (k=0; k<N; k++)
+			{	
+				for (w=0; w<N; w++)
+				{
+				summN=summN+s[k][w];	
+				}
+
+			}
+			magnetizaciontotal=magnetizaciontotal+summN*1.0/(N*N);
+			//Calculamos la energía media:
+			for (k=0; k<N; k++)
+			{	
+				for (w=0; w<N; w++)
+				{
+		
+					Es=-0.5*s[k][w]*(s[k+1][w]+s[k-1][w]+s[k][w+1]+s[k][w-1]);
+
+					if (k==0 && w!=0 && w!=f)
+					{ Es=-0.5*s[k][w]*(s[k+1][w]+s[f][w]+s[k][w+1]+s[k][w-1]);
+			
+					}
+					if (w==0 && k!=0 && k!=f)
+					{
+					Es=-0.5*s[k][w]*(s[k+1][w]+s[k-1][w]+s[k][w+1]+s[k][f]);
+		
+					}
+					if (k==0 && w==0)
+					{
+					Es=-0.5*s[k][w]*(s[k+1][w]+s[f][w]+s[k][w+1]+s[k][f]);
+					}
+	
+					if (k==f && w==0)
+					{
+					Es=-0.5*s[k][w]*(s[0][w]+s[k-1][w]+s[k][w+1]+s[k][f]);
+		
+					}
+					if (k==0 && w==f)
+					{
+					Es=-0.5*s[k][w]*(s[k+1][w]+s[f][w]+s[k][0]+s[k][w-1]);
+		
+					}
+					if (k==f && w==f)
+					{
+					Es=-0.5*s[k][w]*(s[0][w]+s[k-1][w]+s[k][0]+s[k][w-1]);
+		
+					}
+					if (k==f && w!=0 && w!=f)
+					{
+					Es=-0.5*s[k][w]*(s[0][w]+s[k-1][w]+s[k][w+1]+s[k][w-1]);
+		
+					}
+					if (k!=0 && k!=f && w==f)
+					{
+					Es=-0.5*s[k][w]*(s[k+1][w]+s[k-1][w]+s[k][0]+s[k][w-1]);
+		
+					}
+		
+
+				//Sumamos la energía que acabamos de calcular a la anterior:
+
+				sumeN=sumeN+Es;
+				
+					
+				}			
+
+			   }//fin del bucle for de recorrer la red
+		//La energía total de todos los pasos montecarlo es la siguiente:
+			
+			energiatotal=energiatotal+sumeN;
+
+			energiatotalcuad=energiatotalcuad+sumeN*sumeN;
+			
+		//Funcion de correlacion:
+	for (w=0; w<N; w++)
+			{	
+				for (k=0; k<N; k++)
+				{
+					for (x=1; x<(N/2); x++)
+					{
+					if (x<(N-k))
+					{
+		
+					prod=s[k][w]*s[k+x][w];	
+					}
+					if (x>(N-k))
+					{
+					prod=s[k][w]*s[x-(N-k)][w];
+					}
+						
+					fi[x]=fi[x]+prod;
+					
+					}
+
+				}
+	
+			}	
+		}//fin del fmod
+	
+	 
+	}//fin del pasosMC
+
+	//Calculamos todo lo que nos piden.
+ 
+	//La energía media es:
+	
+	energiamedia=energiatotal*100*1.0/pasosMC; //la energia de todos los bucles dividido entre el numero de medidas, que es pasosmc/100;
+	
+		//La magnetizacion promedia es finalmente:
+	
+	magnetizacionmedia=magnetizaciontotal*100*1.0/pasosMC;
+	mN=magnetizacionmedia;
+
+	fprintf(fm," %lf\t %lf\t \n", T, mN);
+
+	//La energía promedia es finalmente:
+
+	eN=energiamedia/(N*N);
+		
+	fprintf(fe,"%lf\t %lf\t \n", T,eN);
+		
+
+	//Calculamos la energia al cuadrado media:
+
+	energiamediacuad=energiatotalcuad*100*1.0/pasosMC;	
+
+	//Ya podemos calcular el calor específico:
+	
+	cN=(1/(N*N*T*T))*(energiamediacuad-energiamedia*energiamedia);
+	fprintf(fc,"%lf\t %lf \t \n", T,cN);
+
+		double corr;
+			for (tt=1; tt<(N/2); tt++)
+			{
+			corr=fi[tt]*100*1.0/(pasosMC*N*N*1.0);
+			//printf("%lf \n", corr);
+			}
+}//Cierro el bucle T
+
+}
